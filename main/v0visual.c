@@ -23,12 +23,14 @@ void freeGrid(char **G);
 void clearScreen();
 
 int main(int argc, char** argv){
+  if(argc!=3){
+    printf("Usage: ./v0visual [n] [k]");
+  }
   char **G=NULL;
   char **G0=NULL;
-  int n=20;
-  int k=10;
+  int n=atoi(argv[1]);
+  int k=atoi(argv[2]);
   initRandom(&G0,n);
-  
   isingSequential(&G,G0,n,k);
 
   freeGrid(G);
@@ -70,6 +72,7 @@ int isingSequential(char ***Gfinal, char** G0,int n, int k){
   for(int run_count=0;run_count<k;run_count++){
     clearScreen();
     printGrid(G0,n);
+    printf("Iteration %d, press any key to continue..\n",run_count);
     getchar();
     // Create.
     for(int i=0;i<n;i++){
