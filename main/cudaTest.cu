@@ -12,7 +12,7 @@ __global__ void hello(){
 
 __global__ void set_your_element(float *a){
   curandState state;
-  curand_init(clock64(),threadIdx.x,0,&state);
+  curand_init(clock64(),0,threadIdx.x,&state);
   a[threadIdx.x]=curand_uniform(&state);
   printf("This is thread %d generating %f\n",threadIdx.x,a[threadIdx.x]);
 }

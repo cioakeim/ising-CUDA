@@ -7,9 +7,14 @@ int main(){
   int k=10;
   char **G;
   char **G0;
+  gridAllocateV0(&G,n);
+  gridAllocateV0(&G0,n);
+
   initRandomV0(&G0,n);
-  int ok=isingV0(&G, G0, n, k); 
-  freeGrid(G);
-  freeGrid(G0);
+
+  isingV0(G, G0, n, k); 
+
+  freeGridV0(G);
+  freeGridV0(G0);
   return 0;
 }

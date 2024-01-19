@@ -2,21 +2,38 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <isingV0.h>
+#include "isingV0.h"
 
-int isingV0(char ***Gfinal, char** G0,int n, int k){
+void gridAllocateV0(char ***G,int n){
+  (*G)=(char**)malloc(n*sizeof(char*));
+  char *data=(char*)malloc(n*n*sizeof(char));
+  for(int i=0;i<n;i++){
+    (*G)[i]=data+i*n;
+  }
+  return;
+}
+
+void initRandomV0(char ***G,int n){
+  // Allocate memory:
+  *G=(char**)malloc(n*sizeof(char*));
+  char *data=(char*)malloc(n*n*sizeof(char));
+  for(int i=0;i<n;i++){
+    (*G)[i]=data+i*n;
+  }
+  // Random state: 
+  srand(time(NULL));
+  for(int i=0;i<n;i++){
+    for(int j=0;j<n;j++){
+      (*G)[i][j]=rand()%2;
+    }
+  }
+}
+
+void isingV0(char **G, char** G0,int n, int k){
   if(k<0){
     printf("k must be a positive integer.\n");
     exit(1);
   }
-  // Init 2nd grid. 
-  *Gfinal=(char**)malloc(n*sizeof(char*));
-  char *data=(char*)malloc(n*n*sizeof(char));
-  for(int i=0;i<n;i++){
-    (*Gfinal)[i]=data+i*n;
-  }
-  // Rename for easier use.
-  char **G=*Gfinal;
   char temp;
   char **Gtemp;
   for(int run_count=0;run_count<k;run_count++){
@@ -36,23 +53,16 @@ int isingV0(char ***Gfinal, char** G0,int n, int k){
   Gtemp=G;
   G=G0;
   G0=Gtemp;
-  return 0;
+  return;
 }
 
-void initRandomV0(char ***G,int n){
-  // Allocate memory:
-  *G=(char**)malloc(n*sizeof(char*));
-  char *data=(char*)malloc(n*n*sizeof(char));
-  for(int i=0;i<n;i++){
-    (*G)[i]=data+i*n;
+void freeGridV0(char **G){
+  if(G==NULL){
+    return;
   }
-  // Random state: 
-  srand(time(NULL));
-  for(int i=0;i<n;i++){
-    for(int j=0;j<n;j++){
-      (*G)[i][j]=rand()%2;
-    }
-  }
+  free(G[0]);
+  free(G);
+  G=NULL;
 }
 
 void printGrid(char **G, int n){
@@ -68,15 +78,6 @@ void printGrid(char **G, int n){
     printf(ANSI_COLOR_RESET"\n" ANSI_COLOR_RESET);
   }
   printf("\n\n");
-}
-
-void freeGrid(char **G){
-  if(G==NULL){
-    return;
-  }
-  free(G[0]);
-  free(G);
-  G=NULL;
 }
 
 void clearScreen() {

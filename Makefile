@@ -15,7 +15,19 @@ v0visual: $(MAIN)/v0visual.c
 	mkdir -p $(BIN)
 	gcc -o $(BIN)/$@ $^
 
-v0Test: $(OBJM)/v0Test.o $(OBJ)/isingV0.o 
+v0test: $(OBJM)/v0Test.o $(OBJ)/isingV0.o 
+	@mkdir -p $(BIN)
+	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
+
+v0time: $(OBJM)/v0time.o $(OBJ)/isingV0.o
+	@mkdir -p $(BIN)
+	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
+
+v1test: $(OBJM)/v1test.o $(OBJ)/isingV0.o $(OBJ)/isingV1.o
+	@mkdir -p $(BIN)
+	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
+
+v1time: $(OBJM)/v1time.o $(OBJ)/isingV1.o
 	@mkdir -p $(BIN)
 	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
 
@@ -27,9 +39,9 @@ $(OBJ)/isingV0.o: $(SRC)/isingV0.cu
 	@mkdir -p $(OBJ)
 	$(CC) -c $< -o $@ $(CFLAGS)  
 
-$(OBJ)/%.o: $(SRC)/%.cu 
+$(OBJ)/isingV1.o: $(SRC)/isingV1.cu
 	@mkdir -p $(OBJ)
-	$(CC) -c $< -o $@ $(CFLAGS)  
+	$(CC) -c $< -o $@ $(CFLAGS)
 
 clean:
 	rm -rf $(OBJ)/* $(OBJM)/* $(BIN)/*
