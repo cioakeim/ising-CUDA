@@ -11,11 +11,18 @@ CFLAGS=-Iinclude
 
 .PHONY: all clean
 
+list:
+	@echo $(SRC)
+	@echo $(INC)
+	@echo $(OBJ)
+	@ls $(SRC)/*.cu
+	@ls $(INC)/*.h
+
 v0visual: $(MAIN)/v0visual.c
 	mkdir -p $(BIN)
 	gcc -o $(BIN)/$@ $^
 
-v0test: $(OBJM)/v0Test.o $(OBJ)/isingV0.o 
+v0test: $(OBJM)/v0test.o $(OBJ)/isingV0.o 
 	@mkdir -p $(BIN)
 	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
 
@@ -31,17 +38,20 @@ v1time: $(OBJM)/v1time.o $(OBJ)/isingV1.o
 	@mkdir -p $(BIN)
 	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
 
+v2test: $(OBJM)/v2test.o $(OBJ)/isingV1.o $(OBJ)/isingV2.o
+	@mkdir -p $(BIN)
+	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
+
 $(OBJM)/%.o: $(MAIN)/%.cu 
 	@mkdir -p $(OBJM)
 	$(CC) -c $< -o $@ $(CFLAGS)  
 
-$(OBJ)/isingV0.o: $(SRC)/isingV0.cu 
+$(OBJ)/%.o: $(SRC)/%.cu 
 	@mkdir -p $(OBJ)
 	$(CC) -c $< -o $@ $(CFLAGS)  
 
-$(OBJ)/isingV1.o: $(SRC)/isingV1.cu
-	@mkdir -p $(OBJ)
-	$(CC) -c $< -o $@ $(CFLAGS)
+$(SRC)/%.cu: $(INC)/%.h
+	touch $@
 
 clean:
 	rm -rf $(OBJ)/* $(OBJM)/* $(BIN)/*

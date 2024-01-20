@@ -17,7 +17,7 @@ int main(){
   // Define iteration parameters:
   int n_min=20;
   int n_max=2000;
-  int n_step=200;
+  int n_step=20;
   int k_min=10;
   int k_max=40;
   int k_step=10;
@@ -54,7 +54,9 @@ int main(){
       }
       // Run both algorithms:
       isingV0(Gseq,G0seq,n,k);
+      //isingV11<<<gridSize,blockSize>>>(G,G0,n,k);
       isingV1(G,G0,n,k,blockSize,gridSize);
+      cudaDeviceSynchronize();
       // Compare results and exit if there is an error:
       for(int i=0;i<n;i++){
         for(int j=0;j<n;j++){

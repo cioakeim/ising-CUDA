@@ -10,6 +10,7 @@ module load gcc/9.4.0 cuda/11.2.2-kkrwdua
 
 cd $HOME/ising-CUDA
 
+make clean
 make v1time 
 
 $HOME/ising-CUDA/bin/v1time $HOME/plotData

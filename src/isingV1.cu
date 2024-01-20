@@ -38,9 +38,8 @@ __global__ void initRandomV1(char **G,int n){
     return;
   }
   curandState state;
-  curand_init(clock64(),0,i*n+j,&state);
-  float temp=curand_uniform(&state);
-  G[i][j]=(temp>0.5)?(1):(0);
+  curand_init(clock64(),i+n*j,0,&state);
+  G[i][j]=curand(&state)%2;
   return;
 }
 
@@ -48,16 +47,9 @@ __global__ void initRandomV1(char **G,int n){
 void isingV1(char **G, char **G0, int n, int k, dim3 blockSize, dim3 gridSize){
   char **Gtemp;
   cudaError_t cudaError;
-  
   for(int run_count=0;run_count<k;run_count++){
     nextStateV1<<<gridSize,blockSize>>>(G,G0,n); 
     cudaDeviceSynchronize();
-    cudaError=cudaGetLastError();
-    if(cudaError!=cudaSuccess){
-      printf("Kernel failed in nextStateV1: %s\n",cudaGetErrorString(cudaError));
-      exit(1);
-    }
-
     Gtemp=G;
     G=G0;
     G0=Gtemp;
@@ -89,4 +81,5 @@ void freeGridV1(char **G){
   cudaFree(G[0]);
   cudaFree(G);
   G=NULL;
+  return;
 }

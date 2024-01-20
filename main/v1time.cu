@@ -39,6 +39,7 @@ int main(int argc, char** argv){
   dim3 blockSize,gridSize;
   cudaError_t cudaError;
 
+  printf("Block size: %d\n",BLOCK_MAX);
   // For all sizes.. 
   for(int n=n_min;n<=n_max;n+=n_step){
     gridAllocateV1(&G0,n);
@@ -52,11 +53,11 @@ int main(int argc, char** argv){
         cudaEventRecord(start,0);
         initRandomV1<<<gridSize,blockSize>>>(G0,n);
         // Error check for initRandom..
-        cudaError=cudaGetLastError();
-        if(cudaError!=cudaSuccess){
-          printf("Kernel failed at initRandom: %s\n",cudaGetErrorString(cudaError));
-          exit(1);
-        }
+        //cudaError=cudaGetLastError();
+        //if(cudaError!=cudaSuccess){
+        //  printf("Kernel failed at initRandom: %s\n",cudaGetErrorString(cudaError));
+        //  exit(1);
+        //}
         cudaDeviceSynchronize();
         isingV1(G,G0,n,k,blockSize,gridSize);
         cudaEventRecord(stop,0);
