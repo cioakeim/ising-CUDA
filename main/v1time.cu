@@ -1,15 +1,15 @@
-/* Script that provides the execution times for v0 of the ising model. */
+/* Script that provides the execution times for v1 of the ising model. */
 #include <stdio.h>
 #include <stdlib.h> 
 #include <string.h>
 #include <cuda_runtime.h>
 #include "isingV1.h"
 
-#define RUNS_PER_SIZE 3
+#define RUNS_PER_SIZE 5
 
 int main(int argc, char** argv){
   if(argc!=2){
-    printf("Usage: ./v0time [resultFolder]\n");
+    printf("Usage: ./v1time [resultFolder]\n");
     exit(1);
   }
   // Get file 
@@ -25,16 +25,18 @@ int main(int argc, char** argv){
   // Init variables.
   char **G;
   char **G0;
-  int n_min=200;
-  int n_step=200;
-  int n_max=2000;
-  int k_min=20;
-  int k_step=20;
-  int k_max=100;
-  float times[RUNS_PER_SIZE];
-  float run_time;
-  cudaEvent_t start,stop;
+  int n_min=5000;
+  int n_step=10000;
+  int n_max=35000;
+  int k_min=30;
+  int k_step=50;
+  int k_max=80;
+  float init_times[RUNS_PER_SIZE];
+  float iter_times[RUNS_PER_SIZE];
+  float init_time,iter_time;
+  cudaEvent_t start,stop,mid;
   cudaEventCreate(&start);
+  cudaEventCreate(&mid);
   cudaEventCreate(&stop);
   dim3 blockSize,gridSize;
   cudaError_t cudaError;
@@ -53,41 +55,53 @@ int main(int argc, char** argv){
         cudaEventRecord(start,0);
         initRandomV1<<<gridSize,blockSize>>>(G0,n);
         // Error check for initRandom..
-        //cudaError=cudaGetLastError();
-        //if(cudaError!=cudaSuccess){
-        //  printf("Kernel failed at initRandom: %s\n",cudaGetErrorString(cudaError));
-        //  exit(1);
-        //}
+        cudaError=cudaGetLastError();
+        if(cudaError!=cudaSuccess){
+          printf("Kernel failed at initRandom: %s\n",cudaGetErrorString(cudaError));
+          exit(1);
+        }
         cudaDeviceSynchronize();
+        cudaEventRecord(mid,0);
         isingV1(G,G0,n,k,blockSize,gridSize);
         cudaEventRecord(stop,0);
+        cudaEventSynchronize(mid);
         cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&run_time,start,stop);
+        cudaEventElapsedTime(&init_time,start,mid);
+        cudaEventElapsedTime(&iter_time,mid,stop);
         // Reset events.
         cudaEventRecord(start,0);
+        cudaEventRecord(mid,0);
         cudaEventRecord(stop,0);
         // Store time in buffer.
-        times[run_count]=run_time;
+        init_times[run_count]=init_time;
+        iter_times[run_count]=iter_time;
       }
       // Get median for this pair (n,k):
-      float median=0;
-      int count;
+      float iter_median=0;
+      float init_median=0;
+      int init_count,iter_count;
       for(int i=0;i<RUNS_PER_SIZE;i++){
-        count=0;
+        init_count=0;
+        iter_count=0;
         for(int j=0;j<RUNS_PER_SIZE;j++){
-          if(times[i]>=times[j]){
-            count++;
+          if(init_times[i]>=init_times[j]){
+            init_count++;
+          }
+          if(iter_times[i]>=iter_times[j]){
+            iter_count++;
           }
         }
         // Check if median:
-        if(count==(RUNS_PER_SIZE/2)+1){
-          median=times[i];
-          break;
+        if(init_count==(RUNS_PER_SIZE/2)+1){
+          init_median=init_times[i];
+        }
+        if(iter_count==(RUNS_PER_SIZE/2)+1){
+          iter_median=iter_times[i];
         }
       }
       // Median retrieved write to file:
       // [n] [k] [median]
-      fprintf(result_file,"%d %d %f\n",n,k,median);
+      fprintf(result_file,"%d %d %f %f\n",n,k,init_median,iter_median);
     }
     freeGridV1(G);
     freeGridV1(G0);
@@ -96,6 +110,7 @@ int main(int argc, char** argv){
   printf("V1 Timing gathered.\n");
   // Cleanup.
   cudaEventDestroy(start);
+  cudaEventDestroy(mid);
   cudaEventDestroy(stop);
   free(file_name);
   fclose(result_file);

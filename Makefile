@@ -42,6 +42,18 @@ v2test: $(OBJM)/v2test.o $(OBJ)/isingV1.o $(OBJ)/isingV2.o
 	@mkdir -p $(BIN)
 	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
 
+v2time: $(OBJM)/v2time.o $(OBJ)/isingV2.o
+	@mkdir -p $(BIN)
+	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
+
+v3test: $(OBJM)/v3test.o $(OBJ)/isingV2.o $(OBJ)/isingV3.o
+	@mkdir -p $(BIN)
+	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
+
+v3time: $(OBJM)/v3time.o $(OBJ)/isingV3.o
+	@mkdir -p $(BIN)
+	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
+
 $(OBJM)/%.o: $(MAIN)/%.cu 
 	@mkdir -p $(OBJM)
 	$(CC) -c $< -o $@ $(CFLAGS)  

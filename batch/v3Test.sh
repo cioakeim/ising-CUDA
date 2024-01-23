@@ -1,16 +1,15 @@
 #!/bin/bash 
 
 #SBATCH --partition=gpu
-#SBATCH --output=v1time.stdout 
+#SBATCH --output=v3test.stdout 
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
-#SBATCH --time=00:25:00
+#SBATCH --time=00:10:00
 
 module load gcc/9.4.0 cuda/11.2.2-kkrwdua 
 
 cd $HOME/ising-CUDA
 
-make clean
-make v1time 
+make v3test 
 
-$HOME/ising-CUDA/bin/v1time $HOME/plotData
+$HOME/ising-CUDA/bin/v3test

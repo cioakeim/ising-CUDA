@@ -54,18 +54,23 @@ int main(){
       }
       // Run both algorithms:
       isingV0(Gseq,G0seq,n,k);
-      //isingV11<<<gridSize,blockSize>>>(G,G0,n,k);
       isingV1(G,G0,n,k,blockSize,gridSize);
       cudaDeviceSynchronize();
       // Compare results and exit if there is an error:
+      int error_count=0;
       for(int i=0;i<n;i++){
         for(int j=0;j<n;j++){
           if(G[i][j]!=Gseq[i][j]){
-            printf("Results don't match for n:%d and k:%d\n",n,k);
-            exit(1);
+            error_count++;
           }
         }
       }
+      if(error_count>0){
+        printf("Results don't match for n:%d and k:%d. No. of errors: %d\n",n,k,error_count);
+        exit(1);
+
+      }
+
     } 
     printf("Size %d done\n",n);
     freeGridV0(Gseq);

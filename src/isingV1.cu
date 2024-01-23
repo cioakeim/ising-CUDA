@@ -49,7 +49,7 @@ void isingV1(char **G, char **G0, int n, int k, dim3 blockSize, dim3 gridSize){
   cudaError_t cudaError;
   for(int run_count=0;run_count<k;run_count++){
     nextStateV1<<<gridSize,blockSize>>>(G,G0,n); 
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
     Gtemp=G;
     G=G0;
     G0=Gtemp;
