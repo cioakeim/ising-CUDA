@@ -54,6 +54,10 @@ v3time: $(OBJM)/v3time.o $(OBJ)/isingV3.o
 	@mkdir -p $(BIN)
 	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
 
+v4test: $(OBJM)/v4test.o $(OBJ)/isingV2.o $(OBJ)/isingV3.o
+	@mkdir -p $(BIN)
+	$(CC) -o $(BIN)/$@ $^ $(CFLAGS)
+
 $(OBJM)/%.o: $(MAIN)/%.cu 
 	@mkdir -p $(OBJM)
 	$(CC) -c $< -o $@ $(CFLAGS)  

@@ -4,7 +4,7 @@
 #ifndef ISING_V2
 #define ISING_V2
 
-#define BLOCK_MAX 8
+#define BLOCK_MAX 16
 
 // Define dimensions of the grid structure based on n. 
 void getDimensionsV2(int n, dim3 &blockSize, dim3 &gridSize, int threadBlockLength);

@@ -22,8 +22,9 @@ int main(int argc, char** argv){
     exit(1);
   }
   // Init variables.
-  char **G;
-  char **G0;
+  char *G;
+  char *G0;
+  char *HostG;
   int n_min=5000;
   int n_step=10000;
   int n_max=35000;
@@ -38,6 +39,7 @@ int main(int argc, char** argv){
   cudaEventCreate(&mid);
   cudaEventCreate(&stop);
   dim3 blockSize,gridSize;
+  int blockLength;
   cudaError_t cudaError;
   int threadBlockLength=atoi(argv[2]);
   printf("threadBlockLength: %d\n Block Max: %d\n",threadBlockLength,BLOCK_MAX);
@@ -45,12 +47,13 @@ int main(int argc, char** argv){
   for(int n=n_min;n<=n_max;n+=n_step){
     gridAllocateV3(&G0,n);
     gridAllocateV3(&G,n);
+    HostG=(char*)malloc(n*n*sizeof(char));
     // For all k until k_max
     for(int k=k_min;k<=k_max;k+=k_step){
       // Test many times..
       for(int run_count=0;run_count<RUNS_PER_SIZE;run_count++){
         // Run this..
-        getDimensionsV3(n,blockSize,gridSize,threadBlockLength);
+        getInitDimensionsV3(n,blockSize,gridSize,threadBlockLength);
         cudaEventRecord(start,0);
         initRandomV3<<<gridSize,blockSize>>>(G0,n,threadBlockLength);
         // Error check for initRandom..
@@ -59,10 +62,10 @@ int main(int argc, char** argv){
           printf("Kernel failed at initRandom: %s\n",cudaGetErrorString(cudaError));
           exit(1);
         }
-        getDimensionsV3(n,blockSize,gridSize,1);
+        getIterDimensionsV3(n,blockSize,gridSize,blockLength);
         cudaDeviceSynchronize();
         cudaEventRecord(mid,0);
-        isingV3(G,G0,n,k,blockSize,gridSize);
+        isingV3(HostG,G,G0,n,k,blockSize,gridSize,blockLength);
         cudaEventRecord(stop,0);
         cudaEventSynchronize(mid);
         cudaEventSynchronize(stop);
@@ -105,6 +108,7 @@ int main(int argc, char** argv){
     }
     freeGridV3(G);
     freeGridV3(G0);
+    free(HostG);
     printf("Size %d done.\n",n);
   }
   printf("V3 Timing gathered.\n");

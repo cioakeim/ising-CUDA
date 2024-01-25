@@ -12,36 +12,46 @@
 
 // Define dimensions of the grid structure based on n. 
 // Same as V2.
-void getDimensionsV3(int n, dim3 &blockSize, dim3 &gridSize, int threadBlockLength){
+void getInitDimensionsV3(int n, dim3 &blockSize, dim3 &gridSize, int threadBlockLength){
   // Threads per dimension so that all n are covered (overallocating for imperfect fits).
-  int threadsPerDimension=(n/threadBlockLength)+(n%threadBlockLength>0);
+  const int threadsPerDimension=(n/threadBlockLength)+(n%threadBlockLength>0);
   // Block and grid size according to BLOCK_MAX (like v1).
-  int blockLength=(threadsPerDimension<BLOCK_MAX)?(threadsPerDimension):(BLOCK_MAX);
-  int gridLength=(threadsPerDimension-1)/BLOCK_MAX+1;
+  const int blockLength=(threadsPerDimension<BLOCK_MAX)?(threadsPerDimension):(BLOCK_MAX);
+  const int gridLength=(threadsPerDimension-1)/BLOCK_MAX+1;
   blockSize=dim3(blockLength,blockLength);
+  gridSize=dim3(gridLength,gridLength);
+  return;
+}
+
+void getIterDimensionsV3(int n, dim3 &blockSize, dim3 &gridSize, int &blockLength){
+  // Each gridBlock calculates a BLOCK_MAX x BLOCK_MAX portion of the total grid.
+  // At each block, 4*BLOCK_MAX threads are added to load the perimeter.
+  blockLength=(n<BLOCK_MAX)?n:BLOCK_MAX;
+  int gridLength=(n-1)/BLOCK_MAX+1;
+
+  blockSize=dim3(blockLength*blockLength+4*blockLength,1);
   gridSize=dim3(gridLength,gridLength);
   return;
 }
 
 // Allocation is not global so its separate. 
 // Same as V2.
-void gridAllocateV3(char ***G,int n){
-  char *data;
-  cudaMallocManaged(&data,n*n*sizeof(char));
-  cudaMallocManaged(G,n*sizeof(char*));
-  for(int i=0;i<n;i++){
-    (*G)[i]=data+n*i;
+void gridAllocateV3(char **G,int n){
+  cudaError_t err;
+  err=cudaMalloc((void**)G,n*n*sizeof(char));
+  if(err!=cudaSuccess){
+    fprintf(stderr,"Error in cudaMalloc: %s\n",cudaGetErrorString(err));
   }
   return;
 }
 
 // Generate random grid based on the dimensions given.
 // Same as V2.
-__global__ void initRandomV3(char **G,int n, int threadBlockLength){
+__global__ void initRandomV3(char *G,int n, int threadBlockLength){
   // Each thread responsible for initializing its own block.
   // BlockI,J point to the starting position of the thread's block..
-  int blockI=threadBlockLength*(blockIdx.x*blockDim.x+threadIdx.x);
-  int blockJ=threadBlockLength*(blockIdx.y*blockDim.y+threadIdx.y);
+  const int blockI=threadBlockLength*(blockIdx.x*blockDim.x+threadIdx.x);
+  const int blockJ=threadBlockLength*(blockIdx.y*blockDim.y+threadIdx.y);
   // Initialize RNG..
   curandState state;
   curand_init(clock64(),blockI*n+blockJ,0,&state);
@@ -52,18 +62,28 @@ __global__ void initRandomV3(char **G,int n, int threadBlockLength){
       if(i>=n || j>=n){
         return;
       }
-      G[i][j]=curand(&state)%2;
+      G[i*n+j]=curand(&state)%2;
+      //G[i*n+j]=100*i+j;
     }
   }
   return;
 }
 
-// Same as V2.
-void isingV3(char **G, char **G0, int n, int k, dim3 blockSize, dim3 gridSize){
-  char **Gtemp;
+void isingV3(char *HostG,char *G, char *G0, int n, int k, dim3 blockSize, dim3 gridSize,int blockLength){
+  char *Gtemp;
   cudaError_t cudaError;
+  // Calculate the dimensions that are used on the last blocks, and pass them.
+  const int boundDimX=(gridSize.x*blockLength>n)?n-(gridSize.x-1)*blockLength:blockLength;
+  const int boundDimY=(gridSize.y*blockLength>n)?n-(gridSize.y-1)*blockLength:blockLength;
+
+  printf("BoundX: %d, BoundY: %d\n",boundDimX,boundDimY);
+  printf("blockLength: %d\n",blockLength);
+  printf("Grid: %d x %d\n",gridSize.x,gridSize.y);
+
+  
+
   for(int run_count=0;run_count<k;run_count++){
-    nextStateV3<<<gridSize,blockSize>>>(G,G0,n);
+    nextStateV3<<<gridSize,blockSize,0>>>(G,G0,n,blockLength,boundDimX,boundDimY);
     cudaError=cudaGetLastError();
     if(cudaError!=cudaSuccess){
       fprintf(stderr,"Error in nextStateV3: %s\n",cudaGetErrorString(cudaError));
@@ -77,44 +97,57 @@ void isingV3(char **G, char **G0, int n, int k, dim3 blockSize, dim3 gridSize){
   Gtemp=G;
   G=G0;
   G0=Gtemp;
+  cudaMemcpy(HostG, G, n*n, cudaMemcpyDeviceToHost);
   return;
 }
 
-__global__ void nextStateV3(char **G,char **G0,int n){
-  // These are for the whole grid.
-  int i=blockIdx.x*blockDim.x+threadIdx.x;
-  int j=blockIdx.y*blockDim.y+threadIdx.y;
-  // These are local.
-  int ii=threadIdx.x+1;
-  int jj=threadIdx.y+1;
-  // This memory will be used from the whole block.
-  // Extra 2 rows on each dimension are for the boundaries from other blocks.
-  __shared__ char locG[BLOCK_MAX+2][BLOCK_MAX+2];
-  // Overallocated threads are useless besides setting the bounds.
-  if(i>=n || j>=n){
-    if(i==n && j<n){
-      locG[ii][jj]=G0[0][j];
-    }
-    if(i<n && j==n){
-      locG[ii][jj]=G0[i][0];
-    }
+// blockLength is length of the blockLength x blockLength block that will be calculated.
+__global__ void nextStateV3(char *G,char *G0,int n,int blockLength,int boundDimX,int boundDimY){
+  // These point to the (0,0) position of the block to be calculated. 
+  const int blockX=blockIdx.x*blockLength;
+  const int blockY=blockIdx.y*blockLength;
+  // Due to thread overallocation find the actual dimensions of the 
+  // portion this block is calculating.
+  // X is rows Y is columns.
+  const int dimX=(blockIdx.x==gridDim.x-1)?boundDimX:blockLength;
+  const int dimY=(blockIdx.y==gridDim.y-1)?boundDimY:blockLength;
+  // Free extra threads.
+  if(threadIdx.x>=dimX*dimY+2*(dimX+dimY)){
     return;
   }
-  // Each thread retrieves its moment to the sharedBlock
-  // ThreadIdx is the reletive id for the block. (locG's bounds are for the neighboring elements)
-  locG[ii][jj]=G0[i][j];
-  // The ones that need the boundaries bring them too.
-  if(ii==1 || ii==blockDim.x){
-    int boundDir=-(ii==1)+(ii==blockDim.x);
-    locG[ii+boundDir][jj]=G0[(n+i+boundDir)%n][j];
-  }
-  if(jj==1 || jj==blockDim.y){
-    int boundDir=-(jj==1)+(jj==blockDim.y);
-    locG[ii][jj+boundDir]=G0[i][(n+j+boundDir)%n];
+  // Shared memory 
+  __shared__ char Gs[(BLOCK_MAX+2)*(BLOCK_MAX+2)];
+  // First 2 thread groups get the upper/lower rows, the rest get the mid section.
+  switch(threadIdx.x/dimY){
+    case 0:
+      // Load first row (top left corner and top right corner are garbage)
+      Gs[1+threadIdx.x]=G0[((n+blockX-1)%n)*n+blockY+threadIdx.x];
+    break;
+    case 1:
+      // Load last row (bottom corners are garbage)     
+      Gs[(dimY+2)*(dimX+1)+1+(threadIdx.x-dimY)]=G0[((blockX+dimX)%n)*n+
+                                                    blockY+(threadIdx.x-dimY)];
+    break;
+    default:
+      // Load the mid rows.
+      Gs[(dimY+2)+(threadIdx.x-2*dimY)]=G0[(blockX+(threadIdx.x-2*dimY)/(dimY+2))*n
+                                        +(n+blockY-1+(threadIdx.x-2*dimY)%(dimY+2))%n];
+    break;
   }
   __syncthreads();
-  // Now the block is in the shared memory.
-  G[i][j]=(locG[ii][jj]+locG[ii][jj+1]+locG[ii][jj-1]+locG[ii+1][jj]+locG[ii-1][jj]>2)?(1):(0);
+  // Free the threads that were here only for the boundary loads.
+  if(threadIdx.x>=dimX*dimY){
+    return;
+  }
+  // The rest just calculate based on the shared grid and store to G.
+  G[(blockX+threadIdx.x/dimY)*n+blockY+threadIdx.x%dimY]=
+    (Gs[(1+threadIdx.x/dimY)*(dimY+2)+(threadIdx.x%dimY)]+
+    Gs[(1+threadIdx.x/dimY)*(dimY+2)+(1+threadIdx.x%dimY)]+
+    Gs[(1+threadIdx.x/dimY)*(dimY+2)+(2+threadIdx.x%dimY)]+
+    Gs[(threadIdx.x/dimY)*(dimY+2)+(1+threadIdx.x%dimY)]+
+    Gs[(2+threadIdx.x/dimY)*(dimY+2)+(1+threadIdx.x%dimY)]>2)?1:0;
+  //G[(blockX+threadIdx.x/dimY)*n+blockY+threadIdx.x%dimY]=
+  //  Gs[(1+threadIdx.x/dimY)*(dimY+2)+(1+threadIdx.x%dimY)]+1;
   return;
 }
 
@@ -131,11 +164,10 @@ __global__ void nextStateV3(char **G,char **G0,int n){
 
 
 // Free grid 
-void freeGridV3(char **G){
+void freeGridV3(char *G){
   if(G==NULL){
     return;
   }
-  cudaFree(G[0]);
   cudaFree(G);
   G=NULL;
   return;
