@@ -1,11 +1,15 @@
+/* This script tests the correctness of the V1 implementation of the assignment.
+ * It is assumed that V0 works correctly. 
+ * For given parameters, a random state is initialized and hard copied to another grid.
+ * The algorithms run for the same number of steps on the initial state and the results 
+ * are compared. If there is an inequality of the results the program exits.
+ */
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include <cuda_runtime.h>
+
 #include "isingV1.h"
 #include "isingV0.h"
-#include <cuda_runtime.h>
-#include <curand.h>
-#include <curand_kernel.h>
 
 int main(){
   // Grids used for V1.
@@ -15,7 +19,7 @@ int main(){
   char **G0seq=NULL;
   char **Gseq=NULL;
   // Define iteration parameters:
-  int n_min=20;
+  int n_min=10;
   int n_max=2000;
   int n_step=20;
   int k_min=10;
@@ -28,22 +32,22 @@ int main(){
   // For each test size..
   for(int n=n_min;n<=n_max;n+=n_step){
     // Allocate grids for both algorithms.
-    // v0 
-    gridAllocateV0(&Gseq,n);
-    gridAllocateV0(&G0seq,n);
-    // v1
-    gridAllocateV1(&G0,n);
-    gridAllocateV1(&G,n);
+    // V0 
+    allocateGridV0(&Gseq,n);
+    allocateGridV0(&G0seq,n);
+    // V1
+    allocateGridV1(&G0,n);
+    allocateGridV1(&G,n);
     getDimensionsV1(n, blockSize, gridSize);
     // For each test iteration count..
     for(int k=k_min;k<=k_max;k+=k_step){
       // Create random state:
-      initRandomV1<<<gridSize,blockSize>>>(G0,n);
+      initializeRandomGridV1<<<gridSize,blockSize>>>(G0,n);
       cudaDeviceSynchronize();
-      // Error check for initRandom..
+      // Error check for random state..
       cudaError=cudaGetLastError();
       if(cudaError!=cudaSuccess){
-        printf("Kernel failed at initRandom: %s\n",cudaGetErrorString(cudaError));
+        printf("Kernel failed at initalizeRandomGridV1: %s\n",cudaGetErrorString(cudaError));
         exit(1);
       }
       // Hard copy to sequential initial state:
@@ -53,9 +57,8 @@ int main(){
         }
       }
       // Run both algorithms:
-      isingV0(Gseq,G0seq,n,k);
-      isingV1(G,G0,n,k,blockSize,gridSize);
-      cudaDeviceSynchronize();
+      evolveIsingGridV0(Gseq,G0seq,n,k,false);
+      evolveIsingGridV1(G,G0,n,k,blockSize,gridSize);
       // Compare results and exit if there is an error:
       int error_count=0;
       for(int i=0;i<n;i++){
@@ -65,12 +68,11 @@ int main(){
           }
         }
       }
+      // If there is and error, report miss count and exit.
       if(error_count>0){
         printf("Results don't match for n:%d and k:%d. No. of errors: %d\n",n,k,error_count);
         exit(1);
-
       }
-
     } 
     printf("Size %d done\n",n);
     freeGridV0(Gseq);

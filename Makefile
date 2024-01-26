@@ -18,7 +18,9 @@ list:
 	@ls $(SRC)/*.cu
 	@ls $(INC)/*.h
 
-v0visual: $(MAIN)/v0visual.c
+all: v0visual v0test v0time v1test v1time v2test v2time v3test v3time
+
+v0visual: $(MAIN)/v0visual.c 
 	mkdir -p $(BIN)
 	gcc -o $(BIN)/$@ $^
 
