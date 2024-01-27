@@ -4,7 +4,7 @@
 #SBATCH --output=v2test.stdout 
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
-#SBATCH --time=00:10:00
+#SBATCH --time=00:20:00
 
 module load gcc/9.4.0 cuda/11.2.2-kkrwdua 
 

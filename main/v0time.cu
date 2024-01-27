@@ -27,13 +27,13 @@ int main(int argc, char** argv){
   char **G;
   char **G0;
   // Range of length.
-  int n_min=400;
-  int n_step=400;
-  int n_max=4000;
+  int n_min=5000;
+  int n_step=10000;
+  int n_max=25000;
   // Range of iteration steps.
   int k_min=20;
-  int k_step=20;
-  int k_max=100;
+  int k_step=40;
+  int k_max=60;
   // For the median calculation. (Time is in ms)
   float init_times_ms[RUNS_PER_SIZE];
   float iter_times_ms[RUNS_PER_SIZE];

@@ -12,4 +12,4 @@ cd $HOME/ising-CUDA
 
 make v0test
 
-$HOME/ising-CUDA/bin/v0test
+$HOME/ising-CUDA/bin/v0test $1 $2

@@ -18,7 +18,7 @@ int main(){
   char **G01=NULL;
   char **G1=NULL;
   // Iteration parameters.
-  int n_min=20;
+  int n_min=10;
   int n_max=2000;
   int n_step=20;
   int k_min=20;
