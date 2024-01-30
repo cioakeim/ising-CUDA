@@ -76,7 +76,7 @@ void evolveIsingGridV3(char *HostG,char *G, char *G0, int n, int k,
   const int boundDimY=(gridSize.y*blockLength>n)?n-(gridSize.y-1)*blockLength:blockLength;
   // Call a kernel for each iteration.
   for(int run_count=0;run_count<k;run_count++){
-    // Send everything to the 0 stream for concurrency.
+    // Send everything to the 0 stream for sequential state calculation.
     generateNextGridStateV3<<<gridSize,blockSize,0>>>(G,G0,n,blockLength,boundDimX,boundDimY);
     cudaError=cudaGetLastError();
     if(cudaError!=cudaSuccess){

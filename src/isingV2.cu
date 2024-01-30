@@ -62,7 +62,7 @@ void evolveIsingGridV2(char **G, char **G0, int n, int k, dim3 blockSize, dim3 g
   cudaError_t cudaError;
   // Call a kernel for each iteration.
   for(int run_count=0;run_count<k;run_count++){
-    // Send everything to the 0 stream for concurrency.
+    // Send everything to the 0 stream for sequential state calculation.
     generateNextGridStateV2<<<gridSize,blockSize,0>>>(G,G0,n,threadBlockLength);
     cudaError=cudaGetLastError();
     if(cudaError!=cudaSuccess){
